@@ -9,9 +9,10 @@ import (
 )
 
 type model struct {
-	repo     string
-	issues   []*github.Issue
-	comments map[int][]*github.IssueComment
+	repo      string
+	issues    []*github.Issue
+	reactions map[int]*github.Reactions
+	comments  map[int][]*github.IssueComment
 }
 
 var cache []model
@@ -25,7 +26,7 @@ func Start(ctx context.Context, client *github.Client, logger *log.Logger) {
 }
 
 func Data() interface{} {
-	var data []interface{}
+	data := []interface{}{}
 
 	for _, mdl := range cache {
 		data = append(data, map[string]interface{}{
@@ -38,7 +39,7 @@ func Data() interface{} {
 }
 
 func issuesAsData(mdl model) interface{} {
-	var data []interface{}
+	data := []interface{}{}
 
 	for _, issue := range mdl.issues {
 		data = append(data, map[string]interface{}{
@@ -50,6 +51,7 @@ func issuesAsData(mdl model) interface{} {
 			"user_avatar_url":      *issue.User.AvatarURL,
 			"created_at_humanized": humanize.Time(*issue.CreatedAt),
 			"comments":             commentsAsData(mdl.comments[*issue.Number]),
+			"reactions":            mdl.reactions[*issue.Number],
 		})
 	}
 
@@ -57,7 +59,7 @@ func issuesAsData(mdl model) interface{} {
 }
 
 func commentsAsData(comments []*github.IssueComment) interface{} {
-	var data []interface{}
+	data := []interface{}{}
 
 	for _, comment := range comments {
 		data = append(data, map[string]interface{}{

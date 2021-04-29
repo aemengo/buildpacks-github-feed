@@ -4,9 +4,8 @@ import Browser
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Http
-import Task exposing (Task)
-import Time
-import Json.Decode exposing (Decoder)
+import Json.Decode as D exposing (Decoder)
+import String.Extra exposing (ellipsis)
 
 main =
   Browser.element
@@ -19,41 +18,41 @@ main =
 -- INIT
 init : () -> (Model, Cmd Msg)
 init _ =
-  (Loading, getIssues "pack")
+  (Loading, getData)
 
--- VARS
-host : String
-host = "https://api.github.com"
+-- JSON
+repoDecoder : Decoder Repo
+repoDecoder =
+    D.map2 Repo
+        (D.field "repo" D.string)
+        (D.field "issues" (D.list issueDecoder))
 
-token : String
-token = ""
-
-repos : List String
-repos =
-    [ "pack"
-    , "lifecycle"
-    , "rfcs"
-    , "spec"
-    , "imgutil"
-    , "docs"
-    ]
-
--- HTTP
 issueDecoder : Decoder Issue
 issueDecoder =
-    Json.Decode.map5 Issue
-        (Json.Decode.at [ "number" ] Json.Decode.int)
-        (Json.Decode.at [ "url" ] Json.Decode.string)
-        (Json.Decode.at [ "title" ] Json.Decode.string)
-        (Json.Decode.at [ "user", "login" ] Json.Decode.string)
-        (Json.Decode.at [ "user", "avatar_url" ] Json.Decode.string)
+    D.map8 Issue
+        (D.field "number" D.int)
+        (D.field "title" D.string)
+        (D.field "url" D.string)
+        (D.field "user" D.string)
+        (D.field "user_avatar_url" D.string)
+        (D.field "is_pr" D.bool)
+        (D.field "created_at_humanized" D.string)
+        (D.field "comments" (D.list commentDecoder))
 
+commentDecoder : Decoder Comment
+commentDecoder =
+    D.map4 Comment
+        (D.field "user" D.string)
+        (D.field "url" D.string)
+        (D.field "created_at_humanized" D.string)
+        (D.field "body" D.string)
 
-getIssues : String -> Cmd Msg
-getIssues repo =
+-- HTTP
+getData : Cmd Msg
+getData =
     Http.get
-        { url = host ++ "/repos/buildpacks/" ++ repo ++ "/issues/564?sort=comments&direction=desc&per_page=5"
-        , expect = Http.expectJson DataReceived issueDecoder
+        { url = "/data"
+        , expect = Http.expectJson DataReceived (D.list repoDecoder)
         }
 
 handleError : Http.Error -> String
@@ -73,78 +72,94 @@ handleError error =
 -- MODEL
 type Model
     = Loading
-    | Success Issue
+    | Success (List Repo)
     | Failure String
 
-type alias Issue =
-    { id : Int
-    , url : String
-    , title : String
-    , user : String
-    , userAvatar : String
+type alias Repo =
+    { name : String
+    , issues : List Issue
     }
 
-    --, isPr : Bool
-    --, createdAt : String
-    --, updatedAt : String
+type alias Issue =
+    { number : Int
+    , title : String
+    , url : String
+    , user : String
+    , userAvatarUrl : String
+    , isPr : Bool
+    , createdAtHumanized : String
+    , comments : List Comment
+    }
 
-type alias Comments =
+type alias Comment =
     { user : String
-    , text : String
-    , createdAt : Time.Posix
-    , updatedAt : Time.Posix
+    , url : String
+    , createdAtHumanized : String
+    , body : String
     }
 
 -- UPDATE
-type Msg = DataReceived (Result Http.Error Issue)
+type Msg = DataReceived (Result Http.Error (List Repo))
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
+update msg _ =
     case msg of
         DataReceived result ->
             case result of
-                Ok issue ->
-                    (Success issue, Cmd.none)
-
+                Ok data ->
+                    (Success data, Cmd.none)
                 Err err ->
                     (Failure (handleError err), Cmd.none)
 
 -- VIEW
+viewComment : Comment -> Html msg
+viewComment comment =
+    li [ class "list-group-item bg-light" ]
+        [ img [ class "ms-3 me-2", src "/assets/img/arrow-return-right.svg", alt "arrow-return-right", width 16, height 16 ] []
+        , text ("(" ++ comment.createdAtHumanized ++ ") " ++ comment.user ++ " " ++ (ellipsis 75 comment.body) )
+        ]
+
+viewIssue : String -> Issue -> Html msg
+viewIssue repoName issue =
+    ul [ class "list-group" ]
+        (
+            (li [ class "list-group-item" ]
+                [ div [ class "d-flex" ]
+                      [ div [ class "flex-shrink-0" ]
+                        [ img [ class "rounded-circle", height 48, width 48, src issue.userAvatarUrl, alt issue.user ] []
+                        ]
+                        , div [ class "flex-grow-1 ms-3" ]
+                            [ h6 [] [ text ( "(#" ++ (String.fromInt issue.number) ++ ") " ++ repoName ++ " " ++ issue.user ++ " (" ++ issue.createdAtHumanized ++")") ]
+                            , text issue.title
+                            ]
+                      ]
+                ]
+            ) :: (List.map viewComment issue.comments)
+        )
+
+viewRepo : Repo -> Html msg
+viewRepo repo =
+    div [ class "row mb-5 me-5" ]
+        [ div [ class "col-md-3" ] [ h4 [ class "text-center text-black-50" ] [ text repo.name] ]
+        , div [ class "col-md" ] (List.map (viewIssue repo.name) repo.issues)
+        ]
+
 view : Model -> Html Msg
 view model =
     case model of
         Loading ->
-            text "Loading..."
+            text ""
         Failure txt ->
             text txt
-        Success issue ->
-            div [ class "container" ]
-                [ div [ class "row" ]
-                    [ div [ class "col-md-12" ]
-                        [ ul [ class "list-group" ]
-                                [ li [ class "list-group-item" ]
-                                    [ div [ class "d-flex" ]
-                                          [ div [ class "flex-shrink-0" ]
-                                            [ img [ class "rounded-circle", height 48, width 48, src issue.userAvatar, alt issue.user ] []
-                                            ]
-                                            , div [ class "flex-grow-1 ms-3" ]
-                                                [ h6 [] [ text ( "(#" ++ (String.fromInt issue.id) ++ ") pack . " ++ issue.user) ]
-                                                , text issue.title
-                                                ]
-                                          ]
-                                    ]
-                                , li [ class "list-group-item" ]
-                                    [ img [ class "ms-3 me-2", src "./assets/img/arrow-return-right.svg", alt "arrow-return-right", width 16, height 16 ] []
-                                    , text "(7 months ago) micahyoung: I'm happy to take a first pass..."
-                                    ]
-                                , li [ class "list-group-item" ]
-                                    [ img [ class "ms-3 me-2", src "./assets/img/arrow-return-right.svg", alt "arrow-return-right", width 16, height 16 ] []
-                                    , text "(5 months ago) aemengo: This be another comment..."
-                                    ]
-                                ]
+        Success repos ->
+            div [ class "feed" ]
+                [ nav [ class "navbar fixed-top navbar-dark bg-dark" ]
+                    [ div [ class "container-fluid" ]
+                        [ a [ class "navbar-brand", href "#" ]
+                            [ img [ src "/assets/img/buildpacks-icon.png", alt "logo", width 30, height 25, class "d-inline-block align-text-top mx-4" ] []
+                            , text "Activity"
+                            ]
                         ]
                     ]
+                , div [ class "container" ] (List.map viewRepo repos)
                 ]
-
-
-

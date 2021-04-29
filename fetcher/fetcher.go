@@ -14,12 +14,11 @@ const (
 )
 
 var repos = []string{
+	"rfcs",
 	"pack",
 	"lifecycle",
-	"rfcs",
 	"spec",
 	"docs",
-	"imgutil",
 }
 
 type result struct {
@@ -44,7 +43,7 @@ func fetch(ctx context.Context, client *github.Client, logger *log.Logger) {
 		close(resultChan)
 	}()
 
-	cache = collect(resultChan, logger)
+	cache = preserveOrder(collect(resultChan, logger))
 }
 
 func fetchRepo(ctx context.Context, client *github.Client, repo string, resultChan chan result, wg *sync.WaitGroup) {
@@ -52,7 +51,7 @@ func fetchRepo(ctx context.Context, client *github.Client, repo string, resultCh
 
 	opts := &github.IssueListByRepoOptions{
 		State:       "open",
-		Sort:        "comments",
+		Sort:        "updated",
 		Direction:   "desc",
 		ListOptions: github.ListOptions{Page: 1, PerPage: numberOfIssuesPerRepo}}
 
@@ -62,6 +61,7 @@ func fetchRepo(ctx context.Context, client *github.Client, repo string, resultCh
 		return
 	}
 
+	rc := map[int]*github.Reactions{}
 	ch := map[int][]*github.IssueComment{}
 
 	for _, issue := range issues {
@@ -78,12 +78,15 @@ func fetchRepo(ctx context.Context, client *github.Client, repo string, resultCh
 		})
 
 		ch[*issue.Number] = first(numberOfCommentsPerIssue, cmts)
+
+		rc[*issue.Number] = issue.Reactions
 	}
 
 	resultChan <- result{mdl: model{
 		repo:     repo,
 		issues:   issues,
 		comments: ch,
+		reactions: rc,
 	}}
 }
 
@@ -114,4 +117,25 @@ func first(count int, cmts []*github.IssueComment) []*github.IssueComment {
 	}
 
 	return r
+}
+
+func preserveOrder(models []model) []model {
+	pluck := func(repo string) (model, bool) {
+		for _, m := range models {
+			if m.repo == repo {
+				return m, true
+			}
+		}
+
+		return model{}, false
+	}
+
+	var elements []model
+	for _, r := range repos {
+		m, ok := pluck(r)
+		if ok {
+			elements = append(elements, m)
+		}
+	}
+	return elements
 }
