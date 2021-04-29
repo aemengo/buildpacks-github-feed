@@ -16,3 +16,6 @@ repl-temp-*
 
 # Dependency directories
 node_modules
+
+# elm
+web/elm.js

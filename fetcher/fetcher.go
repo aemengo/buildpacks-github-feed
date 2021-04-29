@@ -2,12 +2,10 @@ package fetcher
 
 import (
 	"context"
-	"github.com/aemengo/buildpacks-github-feed/models"
 	"github.com/google/go-github/github"
 	"log"
-	"os"
+	"sort"
 	"sync"
-	"time"
 )
 
 const (
@@ -24,33 +22,9 @@ var repos = []string{
 	"imgutil",
 }
 
-var cache []models.Model
-
 type result struct {
-	model models.Model
-	err   error
-}
-
-type commentResult struct {
-	issueNumber int
-	comments    []*github.IssueComment
-	err         error
-}
-
-func Start(ctx context.Context, client *github.Client, logger *log.Logger, sigs chan os.Signal) {
-	fetch(ctx, client, logger)
-
-	ticker := time.NewTicker(5 * time.Minute)
-
-	for {
-		select {
-		case <-ticker.C:
-			fetch(ctx, client, logger)
-		case <-sigs:
-			logger.Println("Stopping GitHub requests...")
-			return
-		}
-	}
+	mdl model
+	err error
 }
 
 func fetch(ctx context.Context, client *github.Client, logger *log.Logger) {
@@ -62,7 +36,7 @@ func fetch(ctx context.Context, client *github.Client, logger *log.Logger) {
 	wg.Add(len(repos))
 
 	for _, repo := range repos {
-		go fetchRepo(ctx, client, repo, resultChan, &wg, logger)
+		go fetchRepo(ctx, client, repo, resultChan, &wg)
 	}
 
 	go func() {
@@ -73,13 +47,13 @@ func fetch(ctx context.Context, client *github.Client, logger *log.Logger) {
 	cache = collect(resultChan, logger)
 }
 
-func fetchRepo(ctx context.Context, client *github.Client, repo string, resultChan chan result, wg *sync.WaitGroup, logger *log.Logger) {
+func fetchRepo(ctx context.Context, client *github.Client, repo string, resultChan chan result, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	opts := &github.IssueListByRepoOptions{
 		State:       "open",
 		Sort:        "comments",
-		Direction:   "asc",
+		Direction:   "desc",
 		ListOptions: github.ListOptions{Page: 1, PerPage: numberOfIssuesPerRepo}}
 
 	issues, _, err := client.Issues.ListByRepo(ctx, "buildpacks", repo, opts)
@@ -88,75 +62,56 @@ func fetchRepo(ctx context.Context, client *github.Client, repo string, resultCh
 		return
 	}
 
-	var (
-		commentsWaitGroup = sync.WaitGroup{}
-		commentResultChan = make(chan commentResult, len(issues))
-	)
-
-	commentsWaitGroup.Add(len(issues))
+	ch := map[int][]*github.IssueComment{}
 
 	for _, issue := range issues {
-		go fetchRepoComments(ctx, client, repo, issue, commentResultChan, &commentsWaitGroup)
+		cmts, _, err := client.Issues.ListComments(ctx, "buildpacks", repo, *issue.Number, nil)
+		if err != nil {
+			resultChan <- result{err: err}
+			continue
+		}
+
+		// The GitHub API doesn't filter/sort comments appropriately
+		// So it's being done client-side
+		sort.Slice(cmts, func(i, j int) bool {
+			return cmts[i].CreatedAt.After(*cmts[j].CreatedAt)
+		})
+
+		ch[*issue.Number] = first(numberOfCommentsPerIssue, cmts)
 	}
 
-	go func() {
-		commentsWaitGroup.Wait()
-		close(commentResultChan)
-	}()
-
-	resultChan <- result{model: models.Model{
-		Repo:     repo,
-		Issues:   issues,
-		Comments: collectComments(commentResultChan, logger),
+	resultChan <- result{mdl: model{
+		repo:     repo,
+		issues:   issues,
+		comments: ch,
 	}}
 }
 
-func fetchRepoComments(ctx context.Context, client *github.Client, repo string, issue *github.Issue, resultChan chan commentResult, wg *sync.WaitGroup) {
-	defer wg.Done()
+func collect(resultChan chan result, logger *log.Logger) []model {
+	var ch []model
 
-	opts := &github.IssueListCommentsOptions{
-		Sort:        "created",
-		ListOptions: github.ListOptions{Page: 1, PerPage: numberOfCommentsPerIssue},
-	}
-
-	cmts, _, err := client.Issues.ListComments(ctx, "buildpacks", repo, *issue.Number, opts)
-	if err != nil {
-		resultChan <- commentResult{err: err}
-		return
-	}
-
-	resultChan <- commentResult{
-		issueNumber: *issue.Number,
-		comments:    cmts,
-	}
-}
-
-func collect(resultChan chan result, logger *log.Logger) []models.Model {
-	var ch []models.Model
-
-	for result := range resultChan {
-		if result.err != nil {
-			logger.Printf("Error: %s\n", result.err)
+	for r := range resultChan {
+		if r.err != nil {
+			logger.Printf("Error: %s\n", r.err)
 			continue
 		}
 
-		ch = append(ch, result.model)
+		ch = append(ch, r.mdl)
 	}
 
 	return ch
 }
 
-func collectComments(resultChan chan commentResult, logger *log.Logger) map[int][]*github.IssueComment {
-	ch := map[int][]*github.IssueComment{}
+func first(count int, cmts []*github.IssueComment) []*github.IssueComment {
+	var r []*github.IssueComment
 
-	for result := range resultChan {
-		if result.err != nil {
-			logger.Printf("Error: %s\n", result.err)
-			continue
+	for i, cmt := range cmts {
+		if i == count {
+			return r
 		}
 
-		ch[result.issueNumber] = result.comments
+		r = append(r, cmt)
 	}
 
-	return ch
+	return r
 }

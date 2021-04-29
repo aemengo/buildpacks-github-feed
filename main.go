@@ -2,16 +2,18 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/aemengo/buildpacks-github-feed/fetcher"
 	"github.com/google/go-github/github"
 	"golang.org/x/oauth2"
 	"log"
+	"net/http"
 	"os"
-	"os/signal"
-	"syscall"
 )
+
+var port = "8082"
 
 func main() {
 	token := os.Getenv("GITHUB_TOKEN")
@@ -20,7 +22,6 @@ func main() {
 	}
 
 	var (
-		sigs   = make(chan os.Signal, 1)
 		logger = log.New(os.Stdout, "[FEED] ", log.LstdFlags)
 		ctx    = context.Background()
 		ts     = oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
@@ -28,10 +29,31 @@ func main() {
 		client = github.NewClient(tc)
 	)
 
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-
 	logger.Println("Starting GitHub requests...")
-	fetcher.Start(ctx, client, logger, sigs)
+	go fetcher.Start(ctx, client, logger)
+
+	handleRequests()
+
+	logger.Printf("Starting server on :%s\n", port)
+	err := http.ListenAndServe(":"+port, nil)
+	expectNoError(err)
+}
+
+func handleRequests() {
+	http.Handle("/", http.FileServer(http.Dir("web")))
+	http.HandleFunc("/data", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		switch r.Method {
+		case http.MethodGet:
+			json.NewEncoder(w).Encode(fetcher.Data())
+		default:
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			json.NewEncoder(w).Encode(map[string]string{
+				"error": fmt.Sprintf(`unsupported HTTP ction "%s": use "GET"`, r.Method),
+			})
+		}
+	})
 }
 
 func expectNoError(err error) {
