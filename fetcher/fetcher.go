@@ -62,7 +62,7 @@ func fetchRepo(ctx context.Context, client *github.Client, repo string, resultCh
 	}
 
 	rc := map[int]*github.Reactions{}
-	ch := map[int][]*github.IssueComment{}
+	ch := map[int][]comment{}
 
 	for _, issue := range issues {
 		cmts, _, err := client.Issues.ListComments(ctx, "buildpacks", repo, *issue.Number, nil)
@@ -71,13 +71,19 @@ func fetchRepo(ctx context.Context, client *github.Client, repo string, resultCh
 			continue
 		}
 
-		// The GitHub API doesn't filter/sort comments appropriately
-		// So it's being done client-side
-		sort.Slice(cmts, func(i, j int) bool {
-			return cmts[i].CreatedAt.After(*cmts[j].CreatedAt)
-		})
+		parsedCmts := parseComments(cmts)
 
-		ch[*issue.Number] = first(numberOfCommentsPerIssue, cmts)
+		if issue.IsPullRequest() {
+			prCmts, _, err := client.PullRequests.ListComments(ctx, "buildpacks", repo, *issue.Number, nil)
+			if err != nil {
+				resultChan <- result{err: err}
+				continue
+			}
+
+			parsedCmts = append(parsedCmts, parsePRComments(prCmts)...)
+		}
+
+		ch[*issue.Number] = first(numberOfCommentsPerIssue, parsedCmts)
 
 		rc[*issue.Number] = issue.Reactions
 	}
@@ -105,9 +111,13 @@ func collect(resultChan chan result, logger *log.Logger) []model {
 	return ch
 }
 
-func first(count int, cmts []*github.IssueComment) []*github.IssueComment {
-	var r []*github.IssueComment
 
+func first(count int, cmts []comment) []comment {
+	sort.Slice(cmts, func(i, j int) bool {
+		return cmts[i].createdAt.After(cmts[j].createdAt)
+	})
+
+	var r []comment
 	for i, cmt := range cmts {
 		if i == count {
 			return r
@@ -138,4 +148,30 @@ func preserveOrder(models []model) []model {
 		}
 	}
 	return elements
+}
+
+func parseComments(cmts []*github.IssueComment) []comment {
+	var events []comment
+	for _, cmt := range cmts {
+		events = append(events, comment{
+			user:      *cmt.User.Login,
+			body:      *cmt.Body,
+			url:       *cmt.HTMLURL,
+			createdAt: *cmt.CreatedAt,
+		})
+	}
+	return events
+}
+
+func parsePRComments(cmts []*github.PullRequestComment) []comment {
+	var events []comment
+	for _, cmt := range cmts {
+		events = append(events, comment{
+			user:      *cmt.User.Login,
+			body:      *cmt.Body,
+			url:       *cmt.HTMLURL,
+			createdAt: *cmt.CreatedAt,
+		})
+	}
+	return events
 }

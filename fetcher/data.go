@@ -8,11 +8,18 @@ import (
 	"time"
 )
 
+type comment struct {
+	user      string
+	body      string
+	url       string
+	createdAt time.Time
+}
+
 type model struct {
 	repo      string
 	issues    []*github.Issue
 	reactions map[int]*github.Reactions
-	comments  map[int][]*github.IssueComment
+	comments  map[int][]comment
 }
 
 var cache []model
@@ -60,17 +67,17 @@ func issuesAsData(mdl model) interface{} {
 	return data
 }
 
-func commentsAsData(comments []*github.IssueComment) interface{} {
+func commentsAsData(comments []comment) interface{} {
 	data := []interface{}{}
 	twoDaysAgo := time.Now().Add(-48 * time.Hour)
 
-	for _, comment := range comments {
+	for _, cmt := range comments {
 		data = append(data, map[string]interface{}{
-			"user":                 *comment.User.Login,
-			"body":                 *comment.Body,
-			"url":                  *comment.HTMLURL,
-			"is_recent":            comment.CreatedAt.After(twoDaysAgo),
-			"created_at_humanized": humanize.Time(*comment.CreatedAt),
+			"user":                 cmt.user,
+			"body":                 cmt.body,
+			"url":                  cmt.url,
+			"is_recent":            cmt.createdAt.After(twoDaysAgo),
+			"created_at_humanized": humanize.Time(cmt.createdAt),
 		})
 	}
 
