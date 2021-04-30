@@ -40,6 +40,7 @@ func Data() interface{} {
 
 func issuesAsData(mdl model) interface{} {
 	data := []interface{}{}
+	twoDaysAgo := time.Now().Add(-48 * time.Hour)
 
 	for _, issue := range mdl.issues {
 		data = append(data, map[string]interface{}{
@@ -48,6 +49,7 @@ func issuesAsData(mdl model) interface{} {
 			"title":                *issue.Title,
 			"user":                 *issue.User.Login,
 			"is_pr":                issue.IsPullRequest(),
+			"is_recent":            issue.CreatedAt.After(twoDaysAgo),
 			"user_avatar_url":      *issue.User.AvatarURL,
 			"created_at_humanized": humanize.Time(*issue.CreatedAt),
 			"comments":             commentsAsData(mdl.comments[*issue.Number]),
@@ -60,12 +62,14 @@ func issuesAsData(mdl model) interface{} {
 
 func commentsAsData(comments []*github.IssueComment) interface{} {
 	data := []interface{}{}
+	twoDaysAgo := time.Now().Add(-48 * time.Hour)
 
 	for _, comment := range comments {
 		data = append(data, map[string]interface{}{
 			"user":                 *comment.User.Login,
 			"body":                 *comment.Body,
-			"url":                  *comment.URL,
+			"url":                  *comment.HTMLURL,
+			"is_recent":            comment.CreatedAt.After(twoDaysAgo),
 			"created_at_humanized": humanize.Time(*comment.CreatedAt),
 		})
 	}
