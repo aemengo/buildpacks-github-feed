@@ -13,8 +13,6 @@ import (
 	"os"
 )
 
-var port = "8082"
-
 func main() {
 	token := os.Getenv("GITHUB_TOKEN")
 	if token == "" {
@@ -27,7 +25,12 @@ func main() {
 		ts     = oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
 		tc     = oauth2.NewClient(ctx, ts)
 		client = github.NewClient(tc)
+		port   = "8080"
 	)
+
+	if p := os.Getenv("PORT"); p != "" {
+		port = p
+	}
 
 	logger.Println("Starting GitHub requests...")
 	go fetcher.Start(ctx, client, logger)
