@@ -65,7 +65,12 @@ func fetchRepo(ctx context.Context, client *github.Client, repo string, resultCh
 	ch := map[int][]comment{}
 
 	for _, issue := range issues {
-		cmts, _, err := client.Issues.ListComments(ctx, "buildpacks", repo, *issue.Number, nil)
+		cmtOpts := &github.IssueListCommentsOptions{
+			Sort:      "created",
+			Direction: "desc",
+		}
+
+		cmts, _, err := client.Issues.ListComments(ctx, "buildpacks", repo, *issue.Number, cmtOpts)
 		if err != nil {
 			resultChan <- result{err: err}
 			continue
@@ -74,7 +79,12 @@ func fetchRepo(ctx context.Context, client *github.Client, repo string, resultCh
 		parsedCmts := parseComments(cmts)
 
 		if issue.IsPullRequest() {
-			prCmts, _, err := client.PullRequests.ListComments(ctx, "buildpacks", repo, *issue.Number, nil)
+			prCmtsOpts := &github.PullRequestListCommentsOptions{
+				Sort:      "created",
+				Direction: "desc",
+			}
+
+			prCmts, _, err := client.PullRequests.ListComments(ctx, "buildpacks", repo, *issue.Number, prCmtsOpts)
 			if err != nil {
 				resultChan <- result{err: err}
 				continue
@@ -89,9 +99,9 @@ func fetchRepo(ctx context.Context, client *github.Client, repo string, resultCh
 	}
 
 	resultChan <- result{mdl: model{
-		repo:     repo,
-		issues:   issues,
-		comments: ch,
+		repo:      repo,
+		issues:    issues,
+		comments:  ch,
 		reactions: rc,
 	}}
 }
