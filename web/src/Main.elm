@@ -53,14 +53,15 @@ commentDecoder =
 
 reactionsDecoder : Decoder Reactions
 reactionsDecoder =
-    D.map7 Reactions
-        (D.field "total_count" D.int)
+    D.map8 Reactions
         (D.field "+1" D.int)
         (D.field "-1" D.int)
         (D.field "laugh" D.int)
         (D.field "confused" D.int)
         (D.field "heart" D.int)
         (D.field "hooray" D.int)
+        (D.field "rocket" D.int)
+        (D.field "eyes" D.int)
 
 -- HTTP
 getData : Cmd Msg
@@ -117,13 +118,14 @@ type alias Comment =
     }
 
 type alias Reactions =
-    { total : Int
-    , plusOne : Int
+    { plusOne : Int
     , minusOne : Int
     , laugh : Int
     , confused : Int
     , heart : Int
     , hooray : Int
+    , rocket : Int
+    , eyes : Int
     }
 
 -- UPDATE
@@ -147,17 +149,18 @@ addIf condition value list =
     else
         list
 
-
 viewReactions : Reactions -> Html msg
 viewReactions reactions =
     div [ class "flex-shrink-0" ]
         (
-            (addIf (reactions.plusOne > 0) (span [ class "me-2" ] [ text ("👍 " ++ (String.fromInt reactions.plusOne)) ])
-                <| addIf (reactions.minusOne > 0) (span [ class "me-2" ] [ text ("👎 " ++ (String.fromInt reactions.minusOne)) ])
-                <| addIf (reactions.laugh > 0) (span [ class "me-2" ] [ text ("😄 " ++ (String.fromInt reactions.laugh)) ])
-                <| addIf (reactions.hooray > 0) (span [ class "me-2" ] [ text ("🎉️ " ++ (String.fromInt reactions.hooray)) ])
-                <| addIf (reactions.confused > 0) (span [ class "me-2" ] [ text ("😕️ " ++ (String.fromInt reactions.confused)) ])
-                <| addIf (reactions.heart > 0) (span [ class "me-2" ] [ text ("❤️ " ++ (String.fromInt reactions.heart)) ])
+            (addIf (reactions.plusOne > 0) (span [ class "me-3" ] [ text ("👍 " ++ (String.fromInt reactions.plusOne)) ])
+                <| addIf (reactions.minusOne > 0) (span [ class "me-3" ] [ text ("👎 " ++ (String.fromInt reactions.minusOne)) ])
+                <| addIf (reactions.laugh > 0) (span [ class "me-3" ] [ text ("😄 " ++ (String.fromInt reactions.laugh)) ])
+                <| addIf (reactions.hooray > 0) (span [ class "me-3" ] [ text ("🎉️ " ++ (String.fromInt reactions.hooray)) ])
+                <| addIf (reactions.confused > 0) (span [ class "me-3" ] [ text ("😕️ " ++ (String.fromInt reactions.confused)) ])
+                <| addIf (reactions.heart > 0) (span [ class "me-3" ] [ text ("❤️ " ++ (String.fromInt reactions.heart)) ])
+                <| addIf (reactions.rocket > 0) (span [ class "me-3" ] [ text ("🚀️ " ++ (String.fromInt reactions.rocket)) ])
+                <| addIf (reactions.eyes > 0) (span [ class "me-3" ] [ text ("👀️ " ++ (String.fromInt reactions.heart)) ])
                 <| []
             )
         )
