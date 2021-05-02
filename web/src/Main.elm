@@ -7,6 +7,8 @@ import Http
 import Json.Decode as D exposing (Decoder)
 import Json.Decode.Extra exposing (andMap)
 import String.Extra exposing (ellipsis)
+import Svg exposing (path, svg)
+import Svg.Attributes exposing (d, fill, viewBox)
 
 
 main =
@@ -52,6 +54,7 @@ issueDecoder =
         |> andMap (D.field "created_at_humanized" D.string)
         |> andMap (D.field "comments" (D.list commentDecoder))
         |> andMap (D.field "reactions" reactionsDecoder)
+        |> andMap (D.field "check_suites" (D.list checkSuiteDecoder))
 
 
 commentDecoder : Decoder Comment
@@ -75,6 +78,21 @@ reactionsDecoder =
         (D.field "hooray" D.int)
         (D.field "rocket" D.int)
         (D.field "eyes" D.int)
+
+
+checkSuiteDecoder : Decoder CheckSuite
+checkSuiteDecoder =
+    D.map2 CheckSuite
+        (D.field "id" D.int)
+        (D.field "checks" (D.list checkDecoder))
+
+
+checkDecoder : Decoder Check
+checkDecoder =
+    D.map3 Check
+        (D.field "id" D.int)
+        (D.field "status" D.string)
+        (D.field "conclusion" D.string)
 
 
 
@@ -135,6 +153,7 @@ type alias Issue =
     , createdAtHumanized : String
     , comments : List Comment
     , reactions : Reactions
+    , checkSuites : List CheckSuite
     }
 
 
@@ -156,6 +175,19 @@ type alias Reactions =
     , hooray : Int
     , rocket : Int
     , eyes : Int
+    }
+
+
+type alias CheckSuite =
+    { id : Int
+    , checks : List Check
+    }
+
+
+type alias Check =
+    { id : Int
+    , status : String
+    , conclusion : String
     }
 
 
@@ -190,6 +222,50 @@ addIf condition value list =
 
     else
         list
+
+
+viewCheckRun : Check -> Html msg
+viewCheckRun check =
+    let
+        success =
+            svg [ Svg.Attributes.class "text-success bi bi-check", width 16, height 16, viewBox "0 0 16 16", fill "currentColor" ]
+                [ path [ d "M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z" ] []
+                ]
+
+        failure =
+            svg [ Svg.Attributes.class "text-danger bi bi-x", width 16, height 16, viewBox "0 0 16 16", fill "currentColor" ]
+                [ path [ d "M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z" ] []
+                ]
+
+        pending =
+            svg [ Svg.Attributes.class "text-warning bi bi-dot", width 16, height 16, viewBox "0 0 16 16", fill "currentColor" ]
+                [ path [ d "M8 9.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z" ] []
+                ]
+
+        skipped =
+            svg [ Svg.Attributes.class "text-muted bi bi-dot", width 16, height 16, viewBox "0 0 16 16", fill "currentColor" ]
+                [ path [ d "M8 9.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z" ] []
+                ]
+    in
+    case check.status of
+        "completed" ->
+            case check.conclusion of
+                "success" ->
+                    success
+
+                "skipped" ->
+                    skipped
+
+                _ ->
+                    failure
+
+        _ ->
+            pending
+
+
+viewCheckSuite : CheckSuite -> Html msg
+viewCheckSuite checkSuite =
+    span [ class "me-1 badge rounded-pill bg-light" ] (List.map viewCheckRun checkSuite.checks)
 
 
 viewReactions : Reactions -> Html msg
@@ -228,12 +304,12 @@ viewComment comment =
 viewIssue : Issue -> Html msg
 viewIssue issue =
     let
-        prAttrs =
+        ( prAttrs, checkSuitAttrs ) =
             if issue.isPr then
-                "text-warning"
+                ( "text-warning", "mt-2" )
 
             else
-                "d-none"
+                ( "d-none", "d-none" )
 
         timeAttrs =
             if issue.isRecent then
@@ -258,6 +334,7 @@ viewIssue issue =
                     , span [] [ text issue.title ]
                     , br [] []
                     , span [ class "fw-light text-secondary" ] [ text (ellipsis 75 issue.body) ]
+                    , div [ class checkSuitAttrs ] (List.map viewCheckSuite issue.checkSuites)
                     ]
                 , viewReactions issue.reactions
                 ]
