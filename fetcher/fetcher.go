@@ -2,10 +2,11 @@ package fetcher
 
 import (
 	"context"
-	"github.com/google/go-github/github"
 	"log"
 	"sort"
 	"sync"
+
+	"github.com/google/go-github/v35/github"
 )
 
 const (
@@ -66,8 +67,8 @@ func fetchRepo(ctx context.Context, client *github.Client, repo string, resultCh
 
 	for _, issue := range issues {
 		cmtOpts := &github.IssueListCommentsOptions{
-			Sort:      "created",
-			Direction: "desc",
+			Sort:      ptr("created"),
+			Direction: ptr("desc"),
 		}
 
 		cmts, _, err := client.Issues.ListComments(ctx, "buildpacks", repo, *issue.Number, cmtOpts)
@@ -120,7 +121,6 @@ func collect(resultChan chan result, logger *log.Logger) []model {
 
 	return ch
 }
-
 
 func first(count int, cmts []comment) []comment {
 	sort.Slice(cmts, func(i, j int) bool {
@@ -184,4 +184,8 @@ func parsePRComments(cmts []*github.PullRequestComment) []comment {
 		})
 	}
 	return events
+}
+
+func ptr(s string) *string {
+	return &s
 }

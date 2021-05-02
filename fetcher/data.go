@@ -2,10 +2,11 @@ package fetcher
 
 import (
 	"context"
-	"github.com/dustin/go-humanize"
-	"github.com/google/go-github/github"
 	"log"
 	"time"
+
+	"github.com/dustin/go-humanize"
+	"github.com/google/go-github/v35/github"
 )
 
 type comment struct {

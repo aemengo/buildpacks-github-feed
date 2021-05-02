@@ -5,12 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/aemengo/buildpacks-github-feed/fetcher"
-	"github.com/google/go-github/github"
-	"golang.org/x/oauth2"
 	"log"
 	"net/http"
 	"os"
+
+	"github.com/aemengo/buildpacks-github-feed/fetcher"
+	"github.com/google/go-github/v35/github"
+	"golang.org/x/oauth2"
 )
 
 func main() {
