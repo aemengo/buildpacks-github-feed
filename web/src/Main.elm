@@ -19,7 +19,7 @@ main =
 -- INIT
 init : () -> (Model, Cmd Msg)
 init _ =
-  (Loading, getData)
+  (Success [], getData)
 
 -- JSON
 repoDecoder : Decoder Repo
@@ -88,8 +88,7 @@ handleError error =
 
 -- MODEL
 type Model
-    = Loading
-    | Success (List Repo)
+    = Success (List Repo)
     | Failure String
 
 type alias Repo =
@@ -218,20 +217,25 @@ viewRepo repo =
 
 view : Model -> Html msg
 view model =
-    case model of
-        Loading ->
-            text ""
-        Failure txt ->
-            text txt
-        Success repos ->
-            div [ class "feed" ]
-                [ nav [ class "navbar fixed-top navbar-dark bg-dark" ]
-                    [ div [ class "container-fluid" ]
-                        [ a [ class "navbar-brand", href "#" ]
-                            [ img [ src "/assets/img/buildpacks-icon.png", alt "logo", width 30, height 25, class "d-inline-block align-text-top mx-4" ] []
-                            , text "Activity"
-                            ]
-                        ]
+    let
+        content =
+            case model of
+              Failure txt ->
+                  [ text txt ]
+              Success repos ->
+                if List.length repos == 0 then
+                    [ text "Try reloading after a few seconds.. 😉" ]
+                else
+                    (List.map viewRepo repos)
+    in
+    div [ class "feed" ]
+        [ nav [ class "navbar fixed-top navbar-dark bg-dark" ]
+            [ div [ class "container-fluid" ]
+                [ a [ class "navbar-brand", href "#" ]
+                    [ img [ src "/assets/img/buildpacks-icon.png", alt "logo", width 30, height 25, class "d-inline-block align-text-top mx-4" ] []
+                    , text "Activity"
                     ]
-                , div [ class "container" ] (List.map viewRepo repos)
                 ]
+            ]
+        , div [ class "container" ] content
+        ]
