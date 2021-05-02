@@ -8,25 +8,35 @@ import Json.Decode as D exposing (Decoder)
 import Json.Decode.Extra exposing (andMap)
 import String.Extra exposing (ellipsis)
 
+
 main =
-  Browser.element
-    { init = init
-    , update = update
-    , subscriptions = always Sub.none
-    , view = view
-    }
+    Browser.element
+        { init = init
+        , update = update
+        , subscriptions = always Sub.none
+        , view = view
+        }
+
+
 
 -- INIT
-init : () -> (Model, Cmd Msg)
+
+
+init : () -> ( Model, Cmd Msg )
 init _ =
-  (Success [], getData)
+    ( Success [], getData )
+
+
 
 -- JSON
+
+
 repoDecoder : Decoder Repo
 repoDecoder =
     D.map2 Repo
         (D.field "repo" D.string)
         (D.field "issues" (D.list issueDecoder))
+
 
 issueDecoder : Decoder Issue
 issueDecoder =
@@ -43,6 +53,7 @@ issueDecoder =
         |> andMap (D.field "comments" (D.list commentDecoder))
         |> andMap (D.field "reactions" reactionsDecoder)
 
+
 commentDecoder : Decoder Comment
 commentDecoder =
     D.map5 Comment
@@ -51,6 +62,7 @@ commentDecoder =
         (D.field "created_at_humanized" D.string)
         (D.field "body" D.string)
         (D.field "is_recent" D.bool)
+
 
 reactionsDecoder : Decoder Reactions
 reactionsDecoder =
@@ -64,7 +76,11 @@ reactionsDecoder =
         (D.field "rocket" D.int)
         (D.field "eyes" D.int)
 
+
+
 -- HTTP
+
+
 getData : Cmd Msg
 getData =
     Http.get
@@ -72,29 +88,40 @@ getData =
         , expect = Http.expectJson DataReceived (D.list repoDecoder)
         }
 
+
 handleError : Http.Error -> String
 handleError error =
     case error of
         Http.BadUrl url ->
             "The URL" ++ url ++ " was invalid"
+
         Http.Timeout ->
             "Timed out"
+
         Http.NetworkError ->
             "Network Error"
+
         Http.BadStatus code ->
-            "Status Code: " ++ String.fromInt(code)
+            "Status Code: " ++ String.fromInt code
+
         Http.BadBody message ->
             message
 
+
+
 -- MODEL
+
+
 type Model
     = Success (List Repo)
     | Failure String
+
 
 type alias Repo =
     { name : String
     , issues : List Issue
     }
+
 
 type alias Issue =
     { number : Int
@@ -110,6 +137,7 @@ type alias Issue =
     , reactions : Reactions
     }
 
+
 type alias Comment =
     { user : String
     , url : String
@@ -117,6 +145,7 @@ type alias Comment =
     , body : String
     , isRecent : Bool
     }
+
 
 type alias Reactions =
     { plusOne : Int
@@ -129,8 +158,14 @@ type alias Reactions =
     , eyes : Int
     }
 
+
+
 -- UPDATE
-type Msg = DataReceived (Result Http.Error (List Repo))
+
+
+type Msg
+    = DataReceived (Result Http.Error (List Repo))
+
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg _ =
@@ -138,95 +173,121 @@ update msg _ =
         DataReceived result ->
             case result of
                 Ok data ->
-                    (Success data, Cmd.none)
+                    ( Success data, Cmd.none )
+
                 Err err ->
-                    (Failure (handleError err), Cmd.none)
+                    ( Failure (handleError err), Cmd.none )
+
+
 
 -- VIEW
+
+
 addIf : Bool -> a -> List a -> List a
 addIf condition value list =
     if condition then
         value :: list
+
     else
         list
+
 
 viewReactions : Reactions -> Html msg
 viewReactions reactions =
     div [ class "flex-shrink-0" ]
-        (
-            (addIf (reactions.plusOne > 0) (span [ class "me-3" ] [ text ("👍 " ++ (String.fromInt reactions.plusOne)) ])
-                <| addIf (reactions.minusOne > 0) (span [ class "me-3" ] [ text ("👎 " ++ (String.fromInt reactions.minusOne)) ])
-                <| addIf (reactions.laugh > 0) (span [ class "me-3" ] [ text ("😄 " ++ (String.fromInt reactions.laugh)) ])
-                <| addIf (reactions.hooray > 0) (span [ class "me-3" ] [ text ("🎉️ " ++ (String.fromInt reactions.hooray)) ])
-                <| addIf (reactions.confused > 0) (span [ class "me-3" ] [ text ("😕️ " ++ (String.fromInt reactions.confused)) ])
-                <| addIf (reactions.heart > 0) (span [ class "me-3" ] [ text ("❤️ " ++ (String.fromInt reactions.heart)) ])
-                <| addIf (reactions.rocket > 0) (span [ class "me-3" ] [ text ("🚀️ " ++ (String.fromInt reactions.rocket)) ])
-                <| addIf (reactions.eyes > 0) (span [ class "me-3" ] [ text ("👀️ " ++ (String.fromInt reactions.heart)) ])
-                <| []
-            )
+        (addIf (reactions.plusOne > 0) (span [ class "me-3" ] [ text ("👍 " ++ String.fromInt reactions.plusOne) ]) <|
+            addIf (reactions.minusOne > 0) (span [ class "me-3" ] [ text ("👎 " ++ String.fromInt reactions.minusOne) ]) <|
+                addIf (reactions.laugh > 0) (span [ class "me-3" ] [ text ("😄 " ++ String.fromInt reactions.laugh) ]) <|
+                    addIf (reactions.hooray > 0) (span [ class "me-3" ] [ text ("🎉️ " ++ String.fromInt reactions.hooray) ]) <|
+                        addIf (reactions.confused > 0) (span [ class "me-3" ] [ text ("😕️ " ++ String.fromInt reactions.confused) ]) <|
+                            addIf (reactions.heart > 0) (span [ class "me-3" ] [ text ("❤️ " ++ String.fromInt reactions.heart) ]) <|
+                                addIf (reactions.rocket > 0) (span [ class "me-3" ] [ text ("🚀️ " ++ String.fromInt reactions.rocket) ]) <|
+                                    addIf (reactions.eyes > 0) (span [ class "me-3" ] [ text ("👀️ " ++ String.fromInt reactions.heart) ]) <|
+                                        []
         )
+
 
 viewComment : Comment -> Html msg
 viewComment comment =
     let
-        timeAttrs = if comment.isRecent then "text-success fw-bold" else "text-success"
+        timeAttrs =
+            if comment.isRecent then
+                "text-success fw-bold"
+
+            else
+                "text-success"
     in
     a [ class "list-group-item bg-light", href comment.url, target "_blank" ]
         [ img [ class "ms-3 me-2", src "/assets/img/arrow-return-right.svg", alt "arrow-return-right", width 16, height 16 ] []
         , span [ class timeAttrs ] [ text ("(" ++ comment.createdAtHumanized ++ ") ") ]
         , span [ class "text-primary fw-bold" ] [ text (comment.user ++ ": ") ]
         , text (ellipsis 75 comment.body)
-    ]
+        ]
+
 
 viewIssue : Issue -> Html msg
 viewIssue issue =
     let
-        prAttrs = if issue.isPr then "text-warning" else "d-none"
-        timeAttrs = if issue.isRecent then "text-success fw-bold" else "fw-normal"
+        prAttrs =
+            if issue.isPr then
+                "text-warning"
+
+            else
+                "d-none"
+
+        timeAttrs =
+            if issue.isRecent then
+                "text-success fw-bold"
+
+            else
+                "fw-normal"
     in
     ul [ class "list-group mt-1" ]
-        (
-            (a [ class "list-group-item list-group-item-action", href issue.url, target "_blank" ]
-                [ div [ class "d-flex" ]
-                      [ div [ class "flex-shrink-0" ]
-                        [ img [ class "rounded-circle", height 48, width 48, src issue.userAvatarUrl, alt issue.user ] []
+        (a [ class "list-group-item list-group-item-action", href issue.url, target "_blank" ]
+            [ div [ class "d-flex" ]
+                [ div [ class "flex-shrink-0" ]
+                    [ img [ class "rounded-circle", height 48, width 48, src issue.userAvatarUrl, alt issue.user ] []
+                    ]
+                , div [ class "flex-grow-1 ms-3" ]
+                    [ h6 []
+                        [ span [] [ text ("(#" ++ String.fromInt issue.number ++ ") ") ]
+                        , span [ class prAttrs ] [ text " [PR] " ]
+                        , span [ class "text-primary fw-bold" ] [ text issue.user ]
+                        , span [ class timeAttrs ] [ text (" (" ++ issue.createdAtHumanized ++ ")") ]
                         ]
-                        , div [ class "flex-grow-1 ms-3" ]
-                            [ h6 []
-                                [ span [] [ text ("(#" ++ (String.fromInt issue.number) ++ ") ") ]
-                                , span [ class prAttrs ] [ text " [PR] " ]
-                                , span [ class "text-primary fw-bold" ] [ text issue.user ]
-                                , span [ class timeAttrs ] [ text (" (" ++ issue.createdAtHumanized ++")") ]
-                                ]
-                            , span [] [ text issue.title ]
-                            , br [] []
-                            , span [ class "fw-light text-secondary" ] [ text (ellipsis 75 issue.body) ]
-                            ]
-                        , viewReactions issue.reactions
-                      ]
+                    , span [] [ text issue.title ]
+                    , br [] []
+                    , span [ class "fw-light text-secondary" ] [ text (ellipsis 75 issue.body) ]
+                    ]
+                , viewReactions issue.reactions
                 ]
-            ) :: (List.map viewComment issue.comments)
+            ]
+            :: List.map viewComment issue.comments
         )
+
 
 viewRepo : Repo -> Html msg
 viewRepo repo =
     div [ class "row mb-5 me-5", id repo.name ]
-        [ div [ class "col-md-3" ] [ h4 [ class "text-center text-black-50" ] [ text repo.name] ]
+        [ div [ class "col-md-3" ] [ h4 [ class "text-center text-black-50" ] [ text repo.name ] ]
         , div [ class "col-md" ] (List.map viewIssue repo.issues)
         ]
+
 
 view : Model -> Html msg
 view model =
     let
         content =
             case model of
-              Failure txt ->
-                  [ text txt ]
-              Success repos ->
-                if List.length repos == 0 then
-                    [ text "Try reloading after a few seconds.. 😉" ]
-                else
-                    (List.map viewRepo repos)
+                Failure txt ->
+                    [ text txt ]
+
+                Success repos ->
+                    if List.length repos == 0 then
+                        [ text "Try reloading after a few seconds.. 😉" ]
+
+                    else
+                        List.map viewRepo repos
     in
     div [ class "feed" ]
         [ nav [ class "navbar fixed-top navbar-dark bg-dark" ]
