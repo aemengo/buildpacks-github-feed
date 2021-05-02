@@ -33,6 +33,7 @@ issueDecoder =
     D.succeed Issue
         |> andMap (D.field "number" D.int)
         |> andMap (D.field "title" D.string)
+        |> andMap (D.field "body" D.string)
         |> andMap (D.field "url" D.string)
         |> andMap (D.field "user" D.string)
         |> andMap (D.field "user_avatar_url" D.string)
@@ -99,6 +100,7 @@ type alias Repo =
 type alias Issue =
     { number : Int
     , title : String
+    , body : String
     , url : String
     , user : String
     , userAvatarUrl : String
@@ -197,7 +199,9 @@ viewIssue issue =
                                 , span [ class "text-primary fw-bold" ] [ text issue.user ]
                                 , span [ class timeAttrs ] [ text (" (" ++ issue.createdAtHumanized ++")") ]
                                 ]
-                            , text issue.title
+                            , span [] [ text issue.title ]
+                            , br [] []
+                            , span [ class "fw-light text-secondary" ] [ text (ellipsis 75 issue.body) ]
                             ]
                         , viewReactions issue.reactions
                       ]

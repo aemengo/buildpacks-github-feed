@@ -55,6 +55,7 @@ func issuesAsData(mdl model) interface{} {
 			"number":               *issue.Number,
 			"url":                  *issue.HTMLURL,
 			"title":                *issue.Title,
+			"body":                 *issue.Body,
 			"user":                 *issue.User.Login,
 			"is_pr":                issue.IsPullRequest(),
 			"is_recent":            issue.CreatedAt.After(twoDaysAgo),
