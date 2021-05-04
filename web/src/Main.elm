@@ -215,6 +215,16 @@ update msg _ =
 -- VIEW
 
 
+mutedText : List (Attribute msg)
+mutedText =
+    [ class "fw-light text-muted" ]
+
+
+hidden : List (Attribute msg)
+hidden =
+    [ class "d-none" ]
+
+
 addIf : Bool -> a -> List a -> List a
 addIf condition value list =
     if condition then
@@ -268,9 +278,17 @@ viewCheckSuite checkSuite =
     span [ class "me-1 badge rounded-pill bg-light" ] (List.map viewCheckRun checkSuite.checks)
 
 
-viewReactions : Reactions -> Html msg
-viewReactions reactions =
-    div [ class "flex-shrink-0" ]
+viewReactions : Issue -> Reactions -> Html msg
+viewReactions issue reactions =
+    let
+        reactionsAttrs =
+            if issue.isRecent then
+                [ class "flex-shrink-0" ]
+
+            else
+                [ class "flex-shrink-0 grayscale half-visible" ]
+    in
+    div reactionsAttrs
         (addIf (reactions.plusOne > 0) (span [ class "me-3" ] [ text ("👍 " ++ String.fromInt reactions.plusOne) ]) <|
             addIf (reactions.minusOne > 0) (span [ class "me-3" ] [ text ("👎 " ++ String.fromInt reactions.minusOne) ]) <|
                 addIf (reactions.laugh > 0) (span [ class "me-3" ] [ text ("😄 " ++ String.fromInt reactions.laugh) ]) <|
@@ -286,57 +304,78 @@ viewReactions reactions =
 viewComment : Comment -> Html msg
 viewComment comment =
     let
-        timeAttrs =
+        ( timeAttrs, userAttrs, bodyAttrs ) =
             if comment.isRecent then
-                "text-success fw-bold"
+                ( [ class "text-success fw-bold" ], [ class "text-primary fw-bold" ], [] )
 
             else
-                "text-success"
+                ( mutedText, mutedText, mutedText )
+
+        arrowClassAttrList =
+            if comment.isRecent then
+                "ms-3 me-2"
+
+            else
+                "ms-3 me-2 half-visible"
     in
     a [ class "list-group-item bg-light", href comment.url, target "_blank" ]
-        [ img [ class "ms-3 me-2", src "/assets/img/arrow-return-right.svg", alt "arrow-return-right", width 16, height 16 ] []
-        , span [ class timeAttrs ] [ text ("(" ++ comment.createdAtHumanized ++ ") ") ]
-        , span [ class "text-primary fw-bold" ] [ text (comment.user ++ ": ") ]
-        , text (ellipsis 75 comment.body)
+        [ img [ class arrowClassAttrList, src "/assets/img/arrow-return-right.svg", alt "arrow-return-right", width 16, height 16 ] []
+        , span timeAttrs [ text ("(" ++ comment.createdAtHumanized ++ ") ") ]
+        , span userAttrs [ text (comment.user ++ ": ") ]
+        , span bodyAttrs [ text (ellipsis 75 comment.body) ]
         ]
 
 
 viewIssue : Issue -> Html msg
 viewIssue issue =
     let
-        ( prAttrs, checkSuitAttrs ) =
+        prClassList =
             if issue.isPr then
-                ( "text-warning", "mt-2" )
+                "text-warning"
 
             else
-                ( "d-none", "d-none" )
+                "d-none"
 
-        timeAttrs =
+        ( rfcAttrs, prAttrs, userAttrs ) =
             if issue.isRecent then
-                "text-success fw-bold"
+                ( [], [ class prClassList ], [ class "text-primary fw-bold" ] )
 
             else
-                "fw-normal"
+                ( mutedText, mutedText, mutedText )
+
+        ( imgAttrList, titleAttrs, timeAttrs ) =
+            if issue.isRecent then
+                ( "rounded-circle", [], [ class "text-success fw-bold" ] )
+
+            else
+                ( "rounded-circle grayscale half-visible", [ class "fw-secondary text-muted" ], mutedText )
+
+        checkSuitAttrs =
+            if issue.isPr then
+                [ class "mt-2" ]
+
+            else
+                hidden
     in
     ul [ class "list-group mt-1" ]
         (a [ class "list-group-item list-group-item-action", href issue.url, target "_blank" ]
             [ div [ class "d-flex" ]
                 [ div [ class "flex-shrink-0" ]
-                    [ img [ class "rounded-circle", height 48, width 48, src issue.userAvatarUrl, alt issue.user ] []
+                    [ img [ class imgAttrList, height 48, width 48, src issue.userAvatarUrl, alt issue.user ] []
                     ]
                 , div [ class "flex-grow-1 ms-3" ]
                     [ h6 []
-                        [ span [] [ text ("(#" ++ String.fromInt issue.number ++ ") ") ]
-                        , span [ class prAttrs ] [ text " [PR] " ]
-                        , span [ class "text-primary fw-bold" ] [ text issue.user ]
-                        , span [ class timeAttrs ] [ text (" (" ++ issue.createdAtHumanized ++ ")") ]
+                        [ span rfcAttrs [ text ("(#" ++ String.fromInt issue.number ++ ") ") ]
+                        , span prAttrs [ text " [PR] " ]
+                        , span userAttrs [ text issue.user ]
+                        , span timeAttrs [ text (" (" ++ issue.createdAtHumanized ++ ")") ]
                         ]
-                    , span [] [ text issue.title ]
+                    , span titleAttrs [ text issue.title ]
                     , br [] []
                     , span [ class "fw-light text-secondary" ] [ text (ellipsis 75 issue.body) ]
-                    , div [ class checkSuitAttrs ] (List.map viewCheckSuite issue.checkSuites)
+                    , div checkSuitAttrs (List.map viewCheckSuite issue.checkSuites)
                     ]
-                , viewReactions issue.reactions
+                , viewReactions issue issue.reactions
                 ]
             ]
             :: List.map viewComment issue.comments

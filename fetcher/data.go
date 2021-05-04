@@ -110,14 +110,14 @@ func checksAsData(results *github.ListCheckRunsResults) interface{} {
 
 func commentsAsData(comments []comment) interface{} {
 	data := []interface{}{}
-	twoDaysAgo := time.Now().Add(-48 * time.Hour)
+	oneDayAgo := time.Now().Add(-24 * time.Hour)
 
 	for _, cmt := range comments {
 		data = append(data, map[string]interface{}{
 			"user":                 cmt.user,
 			"body":                 cmt.body,
 			"url":                  cmt.url,
-			"is_recent":            cmt.createdAt.After(twoDaysAgo),
+			"is_recent":            cmt.createdAt.After(oneDayAgo),
 			"created_at_humanized": humanize.Time(cmt.createdAt),
 		})
 	}
