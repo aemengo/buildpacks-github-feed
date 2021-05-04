@@ -54,7 +54,7 @@ func handleRequests() {
 		default:
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			json.NewEncoder(w).Encode(map[string]string{
-				"error": fmt.Sprintf(`unsupported HTTP ction "%s": use "GET"`, r.Method),
+				"error": fmt.Sprintf(`unsupported HTTP action "%s": use "GET"`, r.Method),
 			})
 		}
 	})
