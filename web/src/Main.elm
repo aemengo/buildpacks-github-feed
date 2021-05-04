@@ -9,13 +9,14 @@ import Json.Decode.Extra exposing (andMap)
 import String.Extra exposing (ellipsis)
 import Svg exposing (path, svg)
 import Svg.Attributes exposing (d, fill, viewBox)
+import Time
 
 
 main =
     Browser.element
         { init = init
         , update = update
-        , subscriptions = always Sub.none
+        , subscriptions = subscriptions
         , view = view
         }
 
@@ -29,6 +30,35 @@ init _ =
     ( Success [], getData )
 
 
+-- UPDATE
+
+
+type Msg
+    = Tick Time.Posix
+    | DataReceived (Result Http.Error (List Repo))
+
+
+update : Msg -> Model -> ( Model, Cmd Msg )
+update msg model =
+    case msg of
+        Tick _ ->
+            (model, getData)
+        DataReceived result ->
+            case result of
+                Ok data ->
+                    ( Success data, Cmd.none )
+
+                Err err ->
+                    ( Failure (handleError err), Cmd.none )
+
+
+
+
+-- SUBSCRIPTIONS
+
+subscriptions : Model -> Sub Msg
+subscriptions _ =
+    Time.every (5 * 60 * 1000) Tick
 
 -- JSON
 
@@ -189,26 +219,6 @@ type alias Check =
     , status : String
     , conclusion : String
     }
-
-
-
--- UPDATE
-
-
-type Msg
-    = DataReceived (Result Http.Error (List Repo))
-
-
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg _ =
-    case msg of
-        DataReceived result ->
-            case result of
-                Ok data ->
-                    ( Success data, Cmd.none )
-
-                Err err ->
-                    ( Failure (handleError err), Cmd.none )
 
 
 
