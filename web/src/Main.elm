@@ -274,6 +274,7 @@ view model =
                     [ img [ src "/assets/img/buildpacks-icon.png", alt "logo", width 30, height 25, class "d-inline-block align-text-top mx-4" ] []
                     , text "Activity"
                     ]
+                , small [ class "fw-light fst-italic text-white-50 me-5" ] [ text "updates every 5min" ]
                 ]
             ]
         , div [ class "container" ] content
