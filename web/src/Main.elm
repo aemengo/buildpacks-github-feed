@@ -1,11 +1,13 @@
 module Main exposing (main)
 
 import Browser
+import Decoders exposing (repoDecoder)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Http
-import Json.Decode as D exposing (Decoder)
-import Json.Decode.Extra exposing (andMap)
+import HttpUtils exposing (..)
+import Json.Decode as D
+import Models exposing (..)
 import String.Extra exposing (ellipsis)
 import Svg exposing (path, svg)
 import Svg.Attributes exposing (d, fill, viewBox)
@@ -30,6 +32,7 @@ init _ =
     ( Success [], getData )
 
 
+
 -- UPDATE
 
 
@@ -42,7 +45,8 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         Tick _ ->
-            (model, getData)
+            ( model, getData )
+
         DataReceived result ->
             case result of
                 Ok data ->
@@ -50,83 +54,6 @@ update msg model =
 
                 Err err ->
                     ( Failure (handleError err), Cmd.none )
-
-
-
-
--- SUBSCRIPTIONS
-
-subscriptions : Model -> Sub Msg
-subscriptions _ =
-    Time.every (5 * 60 * 1000) Tick
-
--- JSON
-
-
-repoDecoder : Decoder Repo
-repoDecoder =
-    D.map2 Repo
-        (D.field "repo" D.string)
-        (D.field "issues" (D.list issueDecoder))
-
-
-issueDecoder : Decoder Issue
-issueDecoder =
-    D.succeed Issue
-        |> andMap (D.field "number" D.int)
-        |> andMap (D.field "title" D.string)
-        |> andMap (D.field "body" D.string)
-        |> andMap (D.field "url" D.string)
-        |> andMap (D.field "user" D.string)
-        |> andMap (D.field "user_avatar_url" D.string)
-        |> andMap (D.field "is_pr" D.bool)
-        |> andMap (D.field "is_recent" D.bool)
-        |> andMap (D.field "created_at_humanized" D.string)
-        |> andMap (D.field "comments" (D.list commentDecoder))
-        |> andMap (D.field "reactions" reactionsDecoder)
-        |> andMap (D.field "check_suites" (D.list checkSuiteDecoder))
-
-
-commentDecoder : Decoder Comment
-commentDecoder =
-    D.map5 Comment
-        (D.field "user" D.string)
-        (D.field "url" D.string)
-        (D.field "created_at_humanized" D.string)
-        (D.field "body" D.string)
-        (D.field "is_recent" D.bool)
-
-
-reactionsDecoder : Decoder Reactions
-reactionsDecoder =
-    D.map8 Reactions
-        (D.field "+1" D.int)
-        (D.field "-1" D.int)
-        (D.field "laugh" D.int)
-        (D.field "confused" D.int)
-        (D.field "heart" D.int)
-        (D.field "hooray" D.int)
-        (D.field "rocket" D.int)
-        (D.field "eyes" D.int)
-
-
-checkSuiteDecoder : Decoder CheckSuite
-checkSuiteDecoder =
-    D.map2 CheckSuite
-        (D.field "id" D.int)
-        (D.field "checks" (D.list checkDecoder))
-
-
-checkDecoder : Decoder Check
-checkDecoder =
-    D.map3 Check
-        (D.field "id" D.int)
-        (D.field "status" D.string)
-        (D.field "conclusion" D.string)
-
-
-
--- HTTP
 
 
 getData : Cmd Msg
@@ -137,88 +64,13 @@ getData =
         }
 
 
-handleError : Http.Error -> String
-handleError error =
-    case error of
-        Http.BadUrl url ->
-            "The URL" ++ url ++ " was invalid"
 
-        Http.Timeout ->
-            "Timed out"
-
-        Http.NetworkError ->
-            "Network Error"
-
-        Http.BadStatus code ->
-            "Status Code: " ++ String.fromInt code
-
-        Http.BadBody message ->
-            message
+-- SUBSCRIPTIONS
 
 
-
--- MODEL
-
-
-type Model
-    = Success (List Repo)
-    | Failure String
-
-
-type alias Repo =
-    { name : String
-    , issues : List Issue
-    }
-
-
-type alias Issue =
-    { number : Int
-    , title : String
-    , body : String
-    , url : String
-    , user : String
-    , userAvatarUrl : String
-    , isPr : Bool
-    , isRecent : Bool
-    , createdAtHumanized : String
-    , comments : List Comment
-    , reactions : Reactions
-    , checkSuites : List CheckSuite
-    }
-
-
-type alias Comment =
-    { user : String
-    , url : String
-    , createdAtHumanized : String
-    , body : String
-    , isRecent : Bool
-    }
-
-
-type alias Reactions =
-    { plusOne : Int
-    , minusOne : Int
-    , laugh : Int
-    , confused : Int
-    , heart : Int
-    , hooray : Int
-    , rocket : Int
-    , eyes : Int
-    }
-
-
-type alias CheckSuite =
-    { id : Int
-    , checks : List Check
-    }
-
-
-type alias Check =
-    { id : Int
-    , status : String
-    , conclusion : String
-    }
+subscriptions : Model -> Sub Msg
+subscriptions _ =
+    Time.every (5 * 60 * 1000) Tick
 
 
 
