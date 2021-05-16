@@ -210,7 +210,7 @@ viewIssue issue =
                 ( "rounded-circle", [], [ class "text-success fw-bold" ] )
 
             else
-                ( "rounded-circle grayscale half-visible", [ class "fw-secondary text-muted" ], mutedText )
+                ( "rounded-circle grayscale half-visible", mutedText, mutedText )
 
         checkSuitAttrs =
             if issue.isPr then
@@ -233,8 +233,6 @@ viewIssue issue =
                         , span timeAttrs [ text (" (" ++ issue.createdAtHumanized ++ ")") ]
                         ]
                     , span titleAttrs [ text issue.title ]
-                    , br [] []
-                    , span [ class "fw-light text-secondary" ] [ text (ellipsis 75 issue.body) ]
                     , div checkSuitAttrs (List.map viewCheckSuite issue.checkSuites)
                     ]
                 , viewReactions issue issue.reactions
