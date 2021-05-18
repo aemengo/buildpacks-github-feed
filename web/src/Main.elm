@@ -191,19 +191,23 @@ viewComment comment =
 viewIssue : Issue -> Html msg
 viewIssue issue =
     let
-        prClassList =
+        prAttrs =
             if issue.isPr then
-                "text-warning"
+                if issue.isRecent then
+                    [ class "text-warning" ]
+
+                else
+                    mutedText
 
             else
-                "d-none"
+                hidden
 
-        ( rfcAttrs, prAttrs, userAttrs ) =
+        ( rfcAttrs, userAttrs ) =
             if issue.isRecent then
-                ( [], [ class prClassList ], [ class "text-primary fw-bold" ] )
+                ( [], [ class "text-primary fw-bold" ] )
 
             else
-                ( mutedText, mutedText, mutedText )
+                ( mutedText, mutedText )
 
         ( imgAttrList, titleAttrs, timeAttrs ) =
             if issue.isRecent then
