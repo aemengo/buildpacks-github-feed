@@ -158,7 +158,7 @@ viewReactions issue reactions =
                         addIf (reactions.confused > 0) (span [ class "me-3" ] [ text ("😕️ " ++ String.fromInt reactions.confused) ]) <|
                             addIf (reactions.heart > 0) (span [ class "me-3" ] [ text ("❤️ " ++ String.fromInt reactions.heart) ]) <|
                                 addIf (reactions.rocket > 0) (span [ class "me-3" ] [ text ("🚀️ " ++ String.fromInt reactions.rocket) ]) <|
-                                    addIf (reactions.eyes > 0) (span [ class "me-3" ] [ text ("👀️ " ++ String.fromInt reactions.heart) ]) <|
+                                    addIf (reactions.eyes > 0) (span [ class "me-3" ] [ text ("👀️ " ++ String.fromInt reactions.eyes) ]) <|
                                         []
         )
 
