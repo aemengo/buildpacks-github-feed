@@ -137,7 +137,7 @@ viewCheckRun check =
 
 viewCheckSuite : CheckSuite -> Html msg
 viewCheckSuite checkSuite =
-    span [ class "me-1 badge rounded-pill bg-light" ] (List.map viewCheckRun checkSuite.checks)
+    span [ class "me-1 badge rounded-pill bg-grey" ] (List.map viewCheckRun checkSuite.checks)
 
 
 viewReactions : Issue -> Reactions -> Html msg
@@ -180,7 +180,7 @@ viewComment comment =
             else
                 "ms-3 me-2 half-visible"
     in
-    a [ class "list-group-item bg-light", href comment.url, target "_blank" ]
+    a [ class "list-group-item bg-grey", href comment.url, target "_blank" ]
         [ img [ class arrowClassAttrList, src "/assets/img/arrow-return-right.svg", alt "arrow-return-right", width 16, height 16 ] []
         , span timeAttrs [ text ("(" ++ comment.createdAtHumanized ++ ") ") ]
         , span userAttrs [ text (comment.user ++ ": ") ]
@@ -249,7 +249,7 @@ viewIssue issue =
 viewRepo : Repo -> Html msg
 viewRepo repo =
     div [ class "row mb-5 me-5", id repo.name ]
-        [ div [ class "col-md-3" ] [ h4 [ class "text-center text-black-50" ] [ text repo.name ] ]
+        [ div [ class "col-md-3" ] [ h4 [ class "text-center text-white-50" ] [ text repo.name ] ]
         , div [ class "col-md" ] (List.map viewIssue repo.issues)
         ]
 
