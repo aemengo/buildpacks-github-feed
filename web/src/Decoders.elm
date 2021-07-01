@@ -22,6 +22,7 @@ issueDecoder =
         |> andMap (D.field "user" D.string)
         |> andMap (D.field "user_avatar_url" D.string)
         |> andMap (D.field "is_pr" D.bool)
+        |> andMap (D.field "is_draft_pr" D.bool)
         |> andMap (D.field "is_recent" D.bool)
         |> andMap (D.field "created_at_humanized" D.string)
         |> andMap (D.field "comments" (D.list commentDecoder))

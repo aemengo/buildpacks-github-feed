@@ -20,6 +20,7 @@ type alias Issue =
     , user : String
     , userAvatarUrl : String
     , isPr : Bool
+    , isDraftPr : Bool
     , isRecent : Bool
     , createdAtHumanized : String
     , comments : List Comment

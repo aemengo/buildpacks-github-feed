@@ -23,6 +23,20 @@ type model struct {
 	reactions map[int]*github.Reactions
 	comments  map[int][]comment
 	checks    map[int]*github.ListCheckRunsResults
+	drafts    map[int]bool
+}
+
+func (m *model) isDraftPr(num int) bool {
+	if m.drafts == nil {
+		return false
+	}
+
+	t, ok := m.drafts[num]
+	if !ok {
+		return false
+	}
+
+	return t
 }
 
 var cache []model
@@ -54,18 +68,19 @@ func issuesAsData(mdl model) interface{} {
 
 	for _, issue := range mdl.issues {
 		data = append(data, map[string]interface{}{
-			"number":               *issue.Number,
-			"url":                  *issue.HTMLURL,
-			"title":                *issue.Title,
-			"body":                 *issue.Body,
-			"user":                 *issue.User.Login,
+			"number":               issue.GetNumber(),
+			"url":                  issue.GetHTMLURL(),
+			"title":                issue.GetTitle(),
+			"body":                 issue.GetBody(),
+			"user":                 issue.GetUser().GetLogin(),
 			"is_pr":                issue.IsPullRequest(),
+			"is_draft_pr":          mdl.isDraftPr(issue.GetNumber()),
 			"is_recent":            issue.CreatedAt.After(twoDaysAgo),
-			"user_avatar_url":      *issue.User.AvatarURL,
-			"created_at_humanized": humanize.Time(*issue.CreatedAt),
-			"comments":             commentsAsData(mdl.comments[*issue.Number]),
-			"check_suites":         checksAsData(mdl.checks[*issue.Number]),
-			"reactions":            mdl.reactions[*issue.Number],
+			"user_avatar_url":      issue.GetUser().GetAvatarURL(),
+			"created_at_humanized": humanize.Time(issue.GetCreatedAt()),
+			"comments":             commentsAsData(mdl.comments[issue.GetNumber()]),
+			"check_suites":         checksAsData(mdl.checks[issue.GetNumber()]),
+			"reactions":            mdl.reactions[issue.GetNumber()],
 		})
 	}
 

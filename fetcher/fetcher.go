@@ -65,6 +65,7 @@ func fetchRepo(ctx context.Context, client *github.Client, repo string, resultCh
 	rc := map[int]*github.Reactions{}
 	ch := map[int][]comment{}
 	cr := map[int]*github.ListCheckRunsResults{}
+	df := map[int]bool{}
 
 	for _, issue := range issues {
 		cmtOpts := &github.IssueListCommentsOptions{
@@ -102,11 +103,13 @@ func fetchRepo(ctx context.Context, client *github.Client, repo string, resultCh
 
 			chks, _, err := client.Checks.ListCheckRunsForRef(ctx, "buildpacks", repo, *pr.Head.SHA, nil)
 			if err != nil {
-				resultChan  <- result{err: err}
+				resultChan <- result{err: err}
 				continue
 			}
 
-			cr[*issue.Number] = chks
+			cr[issue.GetNumber()] = chks
+
+			df[issue.GetNumber()] = pr.GetDraft()
 		}
 
 		ch[*issue.Number] = first(numberOfCommentsPerIssue, parsedCmts)
@@ -119,6 +122,7 @@ func fetchRepo(ctx context.Context, client *github.Client, repo string, resultCh
 		comments:  ch,
 		reactions: rc,
 		checks:    cr,
+		drafts:    df,
 	}}
 }
 

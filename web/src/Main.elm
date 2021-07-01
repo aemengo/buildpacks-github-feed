@@ -202,6 +202,17 @@ viewIssue issue =
             else
                 hidden
 
+        draftAttrs =
+            if issue.isDraftPr then
+                if issue.isRecent then
+                    [ class "fw-light fst-italic" ]
+
+                else
+                    [ class "fw-light fst-italic text-muted" ]
+
+            else
+                hidden
+
         ( rfcAttrs, userAttrs ) =
             if issue.isRecent then
                 ( [], [ class "text-primary fw-bold" ] )
@@ -236,6 +247,7 @@ viewIssue issue =
                         , span userAttrs [ text issue.user ]
                         , span timeAttrs [ text (" (" ++ issue.createdAtHumanized ++ ")") ]
                         ]
+                    , span draftAttrs [ text "draft: " ]
                     , span titleAttrs [ text issue.title ]
                     , div checkSuitAttrs (List.map viewCheckSuite issue.checkSuites)
                     ]
