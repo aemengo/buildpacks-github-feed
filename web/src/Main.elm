@@ -262,7 +262,7 @@ viewRepo : Repo -> Html msg
 viewRepo repo =
     div [ class "row mb-5 me-5", id repo.name ]
         [ div [ class "col-md-3" ] [ h4 [ class "text-center text-black-50" ] [ text repo.name ] ]
-        , div [ class "col-md" ] (List.map viewIssue repo.issues)
+        , div [ class "col-md small" ] (List.map viewIssue repo.issues)
         ]
 
 
