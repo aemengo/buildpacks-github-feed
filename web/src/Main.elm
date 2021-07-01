@@ -204,11 +204,7 @@ viewIssue issue =
 
         draftAttrs =
             if issue.isDraftPr then
-                if issue.isRecent then
-                    [ class "fw-light fst-italic" ]
-
-                else
-                    [ class "fw-light fst-italic text-muted" ]
+                [ class "fw-light fst-italic text-muted" ]
 
             else
                 hidden
