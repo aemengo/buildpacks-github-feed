@@ -73,7 +73,7 @@ func fetchRepo(ctx context.Context, client *github.Client, repo string, resultCh
 			Direction: ptr("desc"),
 		}
 
-		cmts, _, err := client.Issues.ListComments(ctx, "buildpacks", repo, *issue.Number, cmtOpts)
+		cmts, _, err := client.Issues.ListComments(ctx, "buildpacks", repo, issue.GetNumber(), cmtOpts)
 		if err != nil {
 			resultChan <- result{err: err}
 			continue
@@ -87,7 +87,7 @@ func fetchRepo(ctx context.Context, client *github.Client, repo string, resultCh
 				Direction: "desc",
 			}
 
-			prCmts, _, err := client.PullRequests.ListComments(ctx, "buildpacks", repo, *issue.Number, prCmtsOpts)
+			prCmts, _, err := client.PullRequests.ListComments(ctx, "buildpacks", repo, issue.GetNumber(), prCmtsOpts)
 			if err != nil {
 				resultChan <- result{err: err}
 				continue
@@ -95,13 +95,21 @@ func fetchRepo(ctx context.Context, client *github.Client, repo string, resultCh
 
 			parsedCmts = append(parsedCmts, parsePRComments(prCmts)...)
 
+			reviews, _ , err := client.PullRequests.ListReviews(ctx, "buildpacks", repo, issue.GetNumber(), nil)
+			if err != nil {
+				resultChan <- result{err: err}
+				continue
+			}
+
+			parsedCmts = append(parsedCmts, parseReviews(reviews)...)
+
 			pr, _, err := client.PullRequests.Get(ctx, "buildpacks", repo, *issue.Number)
 			if err != nil {
 				resultChan <- result{err: err}
 				continue
 			}
 
-			chks, _, err := client.Checks.ListCheckRunsForRef(ctx, "buildpacks", repo, *pr.Head.SHA, nil)
+			chks, _, err := client.Checks.ListCheckRunsForRef(ctx, "buildpacks", repo, pr.GetHead().GetSHA(), nil)
 			if err != nil {
 				resultChan <- result{err: err}
 				continue
@@ -183,10 +191,10 @@ func parseComments(cmts []*github.IssueComment) []comment {
 	var events []comment
 	for _, cmt := range cmts {
 		events = append(events, comment{
-			user:      *cmt.User.Login,
-			body:      *cmt.Body,
-			url:       *cmt.HTMLURL,
-			createdAt: *cmt.CreatedAt,
+			user:      cmt.GetUser().GetLogin(),
+			body:      cmt.GetBody(),
+			url:       cmt.GetHTMLURL(),
+			createdAt: cmt.GetCreatedAt(),
 		})
 	}
 	return events
@@ -196,10 +204,29 @@ func parsePRComments(cmts []*github.PullRequestComment) []comment {
 	var events []comment
 	for _, cmt := range cmts {
 		events = append(events, comment{
-			user:      *cmt.User.Login,
-			body:      *cmt.Body,
-			url:       *cmt.HTMLURL,
-			createdAt: *cmt.CreatedAt,
+			user:      cmt.GetUser().GetLogin(),
+			body:      cmt.GetBody(),
+			url:       cmt.GetHTMLURL(),
+			createdAt: cmt.GetCreatedAt(),
+		})
+	}
+	return events
+}
+
+func parseReviews(cmts []*github.PullRequestReview) []comment {
+	var events []comment
+	for _, cmt := range cmts {
+		// the text is likely in the reviewComment
+		/// and not the review itself
+		if cmt.GetBody() == "" {
+			continue
+		}
+
+		events = append(events, comment{
+			user:      cmt.GetUser().GetLogin(),
+			body:      cmt.GetBody(),
+			url:       cmt.GetHTMLURL(),
+			createdAt: cmt.GetSubmittedAt(),
 		})
 	}
 	return events
