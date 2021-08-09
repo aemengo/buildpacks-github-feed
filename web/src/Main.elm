@@ -29,7 +29,7 @@ main =
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( Success [], getData )
+    ( Loading, getData )
 
 
 
@@ -50,7 +50,11 @@ update msg model =
         DataReceived result ->
             case result of
                 Ok data ->
-                    ( Success data, Cmd.none )
+                    if List.length data == 0 then
+                        ( Loading, Cmd.none )
+
+                    else
+                        ( Success data, Cmd.none )
 
                 Err err ->
                     ( Failure (handleError err), Cmd.none )
@@ -69,8 +73,13 @@ getData =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions _ =
-    Time.every (5 * 60 * 1000) Tick
+subscriptions model =
+    case model of
+        Loading ->
+            Time.every (5 * 1000) Tick
+
+        _ ->
+            Time.every (5 * 60 * 1000) Tick
 
 
 
@@ -273,15 +282,22 @@ view model =
 
         content =
             case model of
+                Loading ->
+                    [ text "Loading. Give me a sec... 😉" ]
+
+                Success repos ->
+                    List.map viewRepo repos
+
                 Failure txt ->
                     [ text txt ]
 
-                Success repos ->
-                    if List.length repos == 0 then
-                        [ text "Try reloading after a few seconds.. 😉" ]
+        timeTxt =
+            case model of
+                Loading ->
+                    [ text "5s" ]
 
-                    else
-                        List.map viewRepo repos
+                _ ->
+                    [ text "5m" ]
     in
     div [ class "feed" ]
         [ nav [ class "navbar fixed-top navbar-dark bg-dark" ]
@@ -292,7 +308,7 @@ view model =
                     ]
                 , span []
                     [ refresh
-                    , small [ class "fw-light fst-italic text-white-50 me-5" ] [ text "5m" ]
+                    , small [ class "fw-light fst-italic text-white-50 me-5" ] timeTxt
                     ]
                 ]
             ]

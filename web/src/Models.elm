@@ -2,7 +2,8 @@ module Models exposing (..)
 
 
 type Model
-    = Success (List Repo)
+    = Loading
+    | Success (List Repo)
     | Failure String
 
 
